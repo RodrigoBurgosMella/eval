@@ -461,47 +461,6 @@ static EvalResult parse_exponential(EvalContext* ctx, float* output)
     return EVAL_RESULT_OK;
 }
 
-static EvalResult parse_product2(EvalContext* ctx, float* output)
-{
-    EvalResult result;
-    float lhs;
-    float rhs;
-    
-    lhs = 0.0f;
-    rhs = 0.0f;
-    
-    result = parse_unary(ctx, &lhs);
-    if ( result != EVAL_RESULT_OK ) return result;
-    
-    for (;;)
-    {
-        if ( ctx->token.type == EVAL_TOKEN_TYPE_DIVIDE )
-        {
-            result = get_token(ctx);
-            if ( result != EVAL_RESULT_OK ) return result;
-            
-            result = parse_unary(ctx, &rhs);
-            if ( result != EVAL_RESULT_OK ) return result;
-            
-            lhs /= rhs;
-        }
-        else if ( ctx->token.type == EVAL_TOKEN_TYPE_MULTIPLY )
-        {
-            result = get_token(ctx);
-            if ( result != EVAL_RESULT_OK ) return result;
-            
-            result = parse_unary(ctx, &rhs);
-            if ( result != EVAL_RESULT_OK ) return result;
-            
-            lhs *= rhs;
-        }
-        else break;
-    }
-    
-    *output = lhs;
-    
-    return EVAL_RESULT_OK;
-}
 
 static EvalResult parse_product(EvalContext* ctx, float* output)
 {
