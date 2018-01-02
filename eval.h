@@ -31,7 +31,7 @@
 
 
 #define EVAL_MAX_NAME_LENGTH        16
-#define EVAL_MAX_STACK_DEPTH        8
+#define EVAL_MAX_STACK_DEPTH        11
 
 
 typedef enum
