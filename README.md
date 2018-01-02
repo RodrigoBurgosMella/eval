@@ -33,6 +33,9 @@ func(arg)                   Function names follow the same convenion as variable
 -                           Subtracts right operand from left operand.
 *                           Multplies left operand by right operand.
 /                           Divides left operand by right operand.
+
+RodrigoBurgos
+^                           Raise the left operand by the right operand. Ex. 5^2 = 25
 ```
 
 ### Default Variables
