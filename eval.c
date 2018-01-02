@@ -38,6 +38,7 @@ typedef enum
     EVAL_TOKEN_TYPE_SUBTRACT,
     EVAL_TOKEN_TYPE_MULTIPLY,
     EVAL_TOKEN_TYPE_DIVIDE,
+    EVAL_TOKEN_TYPE_POWER,
     EVAL_TOKEN_TYPE_OPEN_BRACKET,
     EVAL_TOKEN_TYPE_CLOSE_BRACKET,
     EVAL_TOKEN_TYPE_NUMBER,
@@ -302,6 +303,7 @@ static EvalResult get_token(EvalContext* ctx)
         }
         else switch (c)
         {
+        case '^':   ctx->token.type = EVAL_TOKEN_TYPE_POWER;            break;
         case '+':   ctx->token.type = EVAL_TOKEN_TYPE_ADD;              break;
         case '-':   ctx->token.type = EVAL_TOKEN_TYPE_SUBTRACT;         break;
         case '*':   ctx->token.type = EVAL_TOKEN_TYPE_MULTIPLY;         break;
@@ -426,7 +428,40 @@ static EvalResult parse_unary(EvalContext* ctx, float* output)
 }
 
 
-static EvalResult parse_product(EvalContext* ctx, float* output)
+static EvalResult parse_exponential(EvalContext* ctx, float* output)
+{
+    EvalResult result;
+    float lhs;
+    float rhs;
+    
+    lhs = 0.0f;
+    rhs = 0.0f;
+    
+    result = parse_unary(ctx, &lhs);
+    if ( result != EVAL_RESULT_OK ) return result;
+
+	for (;;)
+	{
+        if ( ctx->token.type == EVAL_TOKEN_TYPE_POWER )
+        {
+            result = get_token(ctx);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            result = parse_unary(ctx, &rhs);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            //lhs /= rhs;
+			lhs = pow(lhs,rhs);
+        }
+		else break;
+	}
+
+    *output = lhs;
+    
+    return EVAL_RESULT_OK;
+}
+
+static EvalResult parse_product2(EvalContext* ctx, float* output)
 {
     EvalResult result;
     float lhs;
@@ -440,7 +475,17 @@ static EvalResult parse_product(EvalContext* ctx, float* output)
     
     for (;;)
     {
-        if ( ctx->token.type == EVAL_TOKEN_TYPE_MULTIPLY )
+        if ( ctx->token.type == EVAL_TOKEN_TYPE_DIVIDE )
+        {
+            result = get_token(ctx);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            result = parse_unary(ctx, &rhs);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            lhs /= rhs;
+        }
+        else if ( ctx->token.type == EVAL_TOKEN_TYPE_MULTIPLY )
         {
             result = get_token(ctx);
             if ( result != EVAL_RESULT_OK ) return result;
@@ -450,15 +495,47 @@ static EvalResult parse_product(EvalContext* ctx, float* output)
             
             lhs *= rhs;
         }
-        else if ( ctx->token.type == EVAL_TOKEN_TYPE_DIVIDE )
+        else break;
+    }
+    
+    *output = lhs;
+    
+    return EVAL_RESULT_OK;
+}
+
+static EvalResult parse_product(EvalContext* ctx, float* output)
+{
+    EvalResult result;
+    float lhs;
+    float rhs;
+    
+    lhs = 0.0f;
+    rhs = 0.0f;
+    
+    result = parse_exponential(ctx, &lhs);
+    if ( result != EVAL_RESULT_OK ) return result;
+    
+    for (;;)
+    {
+        if ( ctx->token.type == EVAL_TOKEN_TYPE_DIVIDE )
         {
             result = get_token(ctx);
             if ( result != EVAL_RESULT_OK ) return result;
             
-            result = parse_unary(ctx, &rhs);
+            result = parse_exponential(ctx, &rhs);
             if ( result != EVAL_RESULT_OK ) return result;
             
             lhs /= rhs;
+        }
+        else if ( ctx->token.type == EVAL_TOKEN_TYPE_MULTIPLY )
+        {
+            result = get_token(ctx);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            result = parse_exponential(ctx, &rhs);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            lhs *= rhs;
         }
         else break;
     }
@@ -477,7 +554,7 @@ static EvalResult parse_sum(EvalContext* ctx, float* output)
     
     lhs = 0.0f;
     rhs = 0.0f;
-    
+
     result = parse_product(ctx, &lhs);
     if ( result != EVAL_RESULT_OK ) return result;
     
