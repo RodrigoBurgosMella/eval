@@ -811,19 +811,19 @@ const char* eval_result_to_string(EvalResult result)
     const char* STRS[N_EVAL_RESULT_CODES] =
     {
         "ok",
-        "illegal character",
-        "invalid literal",
-        "literal out-of-range",
-        "name too long",
-        "unexpected character",
-        "expected term",
-        "stack overflow",
-        "undefined function",
-        "undefined variable",
-        "expected open bracket",
-        "expected close bracket"
+        "caracter ilegal",
+        "literal invalido",
+        "literal fuera de rango",
+        "nomnre demasiado largo",
+        "caracter inesperado",
+        "termino esperado",
+        "desbordamiento de pila",
+        "funcion indefinida",
+        "variable indefinida",
+        "apertura de parentesis esperado",
+        "cierre de parentesis esperado"
     };
     
     return ((result >= 0) && (result < N_EVAL_RESULT_CODES)) ?
-            STRS[result] : "undefined error";
+            STRS[result] : "error indefinido";
 }
