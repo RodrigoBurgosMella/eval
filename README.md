@@ -66,3 +66,9 @@ floor
 round
 ```
 
+### Compilation
+
+GCC
+```
+gcc.exe -o eval.exe eval.c main.c
+```
