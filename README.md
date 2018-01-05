@@ -70,5 +70,5 @@ round
 
 GCC
 ```
-gcc.exe -o eval.exe eval.c main.c
+gcc -o eval.exe eval.c main.c -lm
 ```
