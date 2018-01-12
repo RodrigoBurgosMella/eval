@@ -27,6 +27,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
+#include <float.h>
 
 #include "eval.h"
 
@@ -39,6 +40,7 @@ typedef enum
     EVAL_TOKEN_TYPE_MULTIPLY,
     EVAL_TOKEN_TYPE_DIVIDE,
     EVAL_TOKEN_TYPE_POWER,
+    EVAL_TOKEN_TYPE_MODULE,
     EVAL_TOKEN_TYPE_OPEN_BRACKET,
     EVAL_TOKEN_TYPE_CLOSE_BRACKET,
     EVAL_TOKEN_TYPE_NUMBER,
@@ -54,7 +56,7 @@ typedef struct
     
     union
     {
-        float number;
+         long double number;
         char name[EVAL_MAX_NAME_LENGTH];
         
     } value;
@@ -73,7 +75,7 @@ typedef struct
 typedef struct
 {
     const char* name;
-    float value;
+     long double value;
     
 } EvalVariableEntry;
 
@@ -89,7 +91,7 @@ typedef struct
 } EvalContext;
 
 
-static EvalResult parse_expr(EvalContext* ctx, float* output);
+static EvalResult parse_expr(EvalContext* ctx,  long double* output);
 
 
 static int is_digit(char c)
@@ -139,11 +141,11 @@ static void put_char(EvalContext* ctx)
 static EvalResult get_number(EvalContext* ctx)
 {
     char c;
-    float value;
+    long double value;
     long exp;
-    float power;
+    long double power;
     
-    value = 0.0f;
+    value = 0.0dl;
     exp = 0;
     
     c = get_char(ctx);
@@ -154,7 +156,7 @@ static EvalResult get_number(EvalContext* ctx)
         
         do
         {
-            value = (value * 10.0f) + (c - '0');
+            value = (value * (long double)(10.0)) + (long double)(c - '0');
             c = get_char(ctx);
             
         } while ( is_digit(c) );
@@ -167,7 +169,7 @@ static EvalResult get_number(EvalContext* ctx)
         
         do
         {
-            value = (value * 10.0f) + (c - '0');
+            value = (value * (long double)10.0) + (long double)(c - '0');
             exp--;
             
             c = get_char(ctx);
@@ -213,7 +215,7 @@ static EvalResult get_number(EvalContext* ctx)
         else exp += int_val;
     }
     
-    power = 10.0f;
+    power = 10.0dl;
     
     if ( exp < 0 )
     {
@@ -310,6 +312,7 @@ static EvalResult get_token(EvalContext* ctx)
         case '/':   ctx->token.type = EVAL_TOKEN_TYPE_DIVIDE;           break;
         case '(':   ctx->token.type = EVAL_TOKEN_TYPE_OPEN_BRACKET;     break;
         case ')':   ctx->token.type = EVAL_TOKEN_TYPE_CLOSE_BRACKET;    break;
+        case '%':   ctx->token.type = EVAL_TOKEN_TYPE_MODULE;           break;
             
         default:    return EVAL_RESULT_ILLEGAL_CHARACTER;
         }
@@ -319,7 +322,7 @@ static EvalResult get_token(EvalContext* ctx)
 }
 
 
-static EvalResult parse_term(EvalContext* ctx, float* output)
+static EvalResult parse_term(EvalContext* ctx,  long double* output)
 {
     EvalResult result;
     
@@ -343,7 +346,7 @@ static EvalResult parse_term(EvalContext* ctx, float* output)
     else if ( ctx->token.type == EVAL_TOKEN_TYPE_FUNC )
     {
         EvalFunc func;
-        float arg;
+         long double arg;
         
         if ( !ctx->hooks || !ctx->hooks->get_func )
         {
@@ -396,14 +399,14 @@ static EvalResult parse_term(EvalContext* ctx, float* output)
 }
 
 
-static EvalResult parse_unary(EvalContext* ctx, float* output)
+static EvalResult parse_unary(EvalContext* ctx,  long double* output)
 {
     EvalResult result;
     int neg;
-    float value;
+    long double value;
     
     neg = 0;
-    value = 0.0f;
+    value = 0.0dl;
     
     for (;;)
     {
@@ -428,14 +431,14 @@ static EvalResult parse_unary(EvalContext* ctx, float* output)
 }
 
 
-static EvalResult parse_exponential(EvalContext* ctx, float* output)
+static EvalResult parse_exponential(EvalContext* ctx,  long double* output)
 {
     EvalResult result;
-    float lhs;
-    float rhs;
+    long double lhs;
+    long double rhs;
     
-    lhs = 0.0f;
-    rhs = 0.0f;
+    lhs = 0.0;
+    rhs = 0.0;
     
     result = parse_unary(ctx, &lhs);
     if ( result != EVAL_RESULT_OK ) return result;
@@ -451,7 +454,7 @@ static EvalResult parse_exponential(EvalContext* ctx, float* output)
             if ( result != EVAL_RESULT_OK ) return result;
             
             //lhs /= rhs;
-			lhs = pow(lhs,rhs);
+			lhs = (long double)powl(lhs,rhs);
         }
 		else break;
 	}
@@ -461,15 +464,14 @@ static EvalResult parse_exponential(EvalContext* ctx, float* output)
     return EVAL_RESULT_OK;
 }
 
-
-static EvalResult parse_product(EvalContext* ctx, float* output)
+static EvalResult parse_product(EvalContext* ctx,  long double* output)
 {
     EvalResult result;
-    float lhs;
-    float rhs;
+    long double lhs;
+    long double rhs;
     
-    lhs = 0.0f;
-    rhs = 0.0f;
+    lhs = 0.0;
+    rhs = 0.0;
     
     result = parse_exponential(ctx, &lhs);
     if ( result != EVAL_RESULT_OK ) return result;
@@ -496,6 +498,17 @@ static EvalResult parse_product(EvalContext* ctx, float* output)
             
             lhs *= rhs;
         }
+        else if ( ctx->token.type == EVAL_TOKEN_TYPE_MODULE )
+        {
+            result = get_token(ctx);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            result = parse_unary(ctx, &rhs);
+            if ( result != EVAL_RESULT_OK ) return result;
+            
+            //lhs *= rhs;
+			lhs = (long double)fmodl(lhs,rhs);
+        }
         else break;
     }
     
@@ -505,14 +518,14 @@ static EvalResult parse_product(EvalContext* ctx, float* output)
 }
 
 
-static EvalResult parse_sum(EvalContext* ctx, float* output)
+static EvalResult parse_sum(EvalContext* ctx,  long double* output)
 {
     EvalResult result;
-    float lhs;
-    float rhs;
+    long double lhs;
+    long double rhs;
     
-    lhs = 0.0f;
-    rhs = 0.0f;
+    lhs = 0.0;
+    rhs = 0.0;
 
     result = parse_product(ctx, &lhs);
     if ( result != EVAL_RESULT_OK ) return result;
@@ -548,7 +561,7 @@ static EvalResult parse_sum(EvalContext* ctx, float* output)
 }
 
 
-static EvalResult parse_expr(EvalContext* ctx, float* output)
+static EvalResult parse_expr(EvalContext* ctx,  long double* output)
 {
     EvalResult result;
     
@@ -566,7 +579,7 @@ static EvalResult parse_expr(EvalContext* ctx, float* output)
 
 
 EvalResult eval_execute(const char* expression, const EvalHooks* hooks,
-        void* user_data, float* output)
+        void* user_data,  long double* output)
 {
     EvalContext ctx;
     EvalResult result;
@@ -581,113 +594,113 @@ EvalResult eval_execute(const char* expression, const EvalHooks* hooks,
     
     result = parse_expr(&ctx, output);
     if ( result != EVAL_RESULT_OK ) return result;
-    
+
     return ( ctx.token.type == EVAL_TOKEN_TYPE_END ) ? EVAL_RESULT_OK :
             EVAL_RESULT_UNEXPECTED_CHAR;
 }
 
 
-static EvalResult func_cos(float input, void* user_data, float* output)
+static EvalResult func_cos( long double input, void* user_data,  long double* output)
 {
-    *output = cos(input);
+    *output = cosl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_sin(float input, void* user_data, float* output)
+static EvalResult func_sin( long double input, void* user_data,  long double* output)
 {
-    *output = sin(input);
+    *output = sinl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_tan(float input, void* user_data, float* output)
+static EvalResult func_tan( long double input, void* user_data,  long double* output)
 {
-    *output = tan(input);
+    *output = tanl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_acos(float input, void* user_data, float* output)
+static EvalResult func_acos( long double input, void* user_data,  long double* output)
 {
-    *output = acos(input);
+    *output = acosl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_asin(float input, void* user_data, float* output)
+static EvalResult func_asin( long double input, void* user_data,  long double* output)
 {
-    *output = asin(input);
+    *output = asinl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_atan(float input, void* user_data, float* output)
+static EvalResult func_atan( long double input, void* user_data,  long double* output)
 {
-    *output = atan(input);
+    *output = atanl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_exp(float input, void* user_data, float* output)
+static EvalResult func_exp( long double input, void* user_data,  long double* output)
 {
-    *output = exp(input);
+    *output = expl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_log(float input, void* user_data, float* output)
+static EvalResult func_log( long double input, void* user_data,  long double* output)
 {
-    *output = log(input);
+    *output = logl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_log10(float input, void* user_data, float* output)
+static EvalResult func_log10( long double input, void* user_data,  long double* output)
 {
-    *output = log10(input);
+    *output = log10l(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_log2(float input, void* user_data, float* output)
+static EvalResult func_log2( long double input, void* user_data,  long double* output)
 {
-    *output = log2(input);
+    *output = log2l(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_sqrt(float input, void* user_data, float* output)
+static EvalResult func_sqrt( long double input, void* user_data,  long double* output)
 {
-    *output = sqrt(input);
+    *output = sqrtl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_cbrt(float input, void* user_data, float* output)
+static EvalResult func_cbrt( long double input, void* user_data,  long double* output)
 {
-    *output = cbrt(input);
+    *output = cbrtl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_ceil(float input, void* user_data, float* output)
+static EvalResult func_ceil( long double input, void* user_data,  long double* output)
 {
-    *output = ceil(input);
+    *output = ceill(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_floor(float input, void* user_data, float* output)
+static EvalResult func_floor( long double input, void* user_data,  long double* output)
 {
-    *output = floor(input);
+    *output = floorl(input);
     return EVAL_RESULT_OK;
 }
 
 
-static EvalResult func_round(float input, void* user_data, float* output)
+static EvalResult func_round( long double input, void* user_data,  long double* output)
 {
-    *output = round(input);
+    *output = roundl(input);
     return EVAL_RESULT_OK;
 }
 
@@ -726,7 +739,7 @@ static EvalFunc default_get_func(const char* name, void* user_data)
 }
 
 
-static EvalResult default_get_variable(const char* name, void* user_data, float* output)
+static EvalResult default_get_variable(const char* name, void* user_data,  long double* output)
 {
     static const EvalVariableEntry VARIABLES[] =
     {
