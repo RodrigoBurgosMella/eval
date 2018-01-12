@@ -36,6 +36,7 @@ func(arg)                   Function names follow the same convenion as variable
 
 RodrigoBurgos
 ^                           Raise the left operand by the right operand. Ex. 5^2 = 25
+%                           Get the rest of the division of one number by another. Ex. 5%2 =1;  4%2=0;
 ```
 
 ### Default Variables
