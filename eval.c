@@ -452,11 +452,10 @@ static EvalResult parse_exponential(EvalContext* ctx,  long double* output)
             
             result = parse_unary(ctx, &rhs);
             if ( result != EVAL_RESULT_OK ) return result;
-            
-            //lhs /= rhs;
-			lhs = (long double)powl(lhs,rhs);
+
+            lhs = (long double)powl(lhs,rhs);
         }
-		else break;
+            else break;
 	}
 
     *output = lhs;
@@ -506,8 +505,7 @@ static EvalResult parse_product(EvalContext* ctx,  long double* output)
             result = parse_unary(ctx, &rhs);
             if ( result != EVAL_RESULT_OK ) return result;
             
-            //lhs *= rhs;
-			lhs = (long double)fmodl(lhs,rhs);
+            lhs = (long double)fmodl(lhs,rhs);
         }
         else break;
     }
