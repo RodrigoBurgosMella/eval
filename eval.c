@@ -784,7 +784,7 @@ const char* eval_result_to_string(EvalResult result)
         "caracter ilegal",
         "literal invalido",
         "literal fuera de rango",
-        "nomnre demasiado largo",
+        "nombre demasiado largo",
         "caracter inesperado",
         "termino esperado",
         "desbordamiento de pila",
